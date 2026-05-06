@@ -30,15 +30,16 @@ def generate(prompt: str, token: str, aspect: str = "1:1"):
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=60)
         
-        if response.status_code == 200:
-            # NovelAI присылает ZIP. Распаковываем его в памяти.
+       if response.status_code == 200:
+            # Тут всё ок
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
-                # Берем первый файл из архива (это и есть наша картинка)
                 file_name = zip_file.namelist()[0]
                 with zip_file.open(file_name) as img_file:
                     return Response(content=img_file.read(), media_type="image/png")
         else:
-            return Response(content=f"NAI Error: {response.status_code} - {response.text}", media_type="text/plain")
+            # ВАЖНО: Добавь это, чтобы мы видели причину!
+            error_message = response.text
+            return Response(content=f"NAI Error {response.status_code}: {error_message}", media_type="text/plain")
             
     except Exception as e:
         return Response(content=f"Extraction Error: {str(e)}", media_type="text/plain")
