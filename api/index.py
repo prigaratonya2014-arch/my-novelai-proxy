@@ -33,4 +33,4 @@ def generate(prompt: str, token: str, aspect: str = "1:1"):
         else:
             return Response(content=f"NAI Error {response.status_code}: {response.text}", media_type="text/plain")
     except Exception as e:
-        return Response(content=f"System Error: {str(e)}", media_type="text/plain")
+        return Response(content=f"Error: {str(e)}", media_type="text/plain")
