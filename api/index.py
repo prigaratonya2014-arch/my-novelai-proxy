@@ -29,7 +29,7 @@ class handler(BaseHTTPRequestHandler):
             "action": "generate",
             "parameters": {
                 "width": w, "height": h, "scale": 5,
-                "sampler": "k_euler_ancestral", "steps": 50,
+                "sampler": "k_euler_ancestral", "steps": 28,
                 "n_samples": 1, "uc": "lowres, bad quality"
             }
         }
