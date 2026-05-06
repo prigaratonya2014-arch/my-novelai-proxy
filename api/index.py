@@ -1,40 +1,55 @@
-from fastapi import FastAPI, Response
 import requests
 import io
 import zipfile
+from http.server import BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 
-# Vercel ищет именно эту переменную
-app = FastAPI()
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        # Парсим параметры из ссылки
+        query = parse_qs(urlparse(self.path).query)
+        prompt = query.get('prompt', [''])[0]
+        token = query.get('token', [''])[0]
+        aspect = query.get('aspect', ['1:1'])[0]
 
-@app.get("/generate")
-def generate(prompt: str, token: str, aspect: str = "1:1"):
-    sizes = {"1:1": (1024, 1024), "2:3": (832, 1216), "3:2": (1216, 832)}
-    w, h = sizes.get(aspect, (1024, 1024))
-    url = "https://image.novelai.net/ai/generate-image"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    
-    payload = {
-        "input": prompt,
-        "model": "nai-diffusion-3",
-        "action": "generate",
-        "parameters": {
-            "width": w, "height": h, "scale": 5,
-            "sampler": "k_euler_ancestral", "steps": 28,
-            "n_samples": 1, "uc": "lowres, bad quality"
+        if not prompt or not token:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b"Missing prompt or token")
+            return
+
+        sizes = {"1:1": (1024, 1024), "2:3": (832, 1216), "3:2": (1216, 832)}
+        w, h = sizes.get(aspect, (1024, 1024))
+        
+        url = "https://image.novelai.net/ai/generate-image"
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        payload = {
+            "input": prompt,
+            "model": "nai-diffusion-3",
+            "action": "generate",
+            "parameters": {
+                "width": w, "height": h, "scale": 5,
+                "sampler": "k_euler_ancestral", "steps": 28,
+                "n_samples": 1, "uc": "lowres, bad quality"
+            }
         }
-    }
 
-    try:
-        response = requests.post(url, json=payload, headers=headers, timeout=60)
-        if response.status_code == 200:
-            with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
-                file_name = zip_file.namelist()[0]
-                with zip_file.open(file_name) as img_file:
-                    return Response(content=img_file.read(), media_type="image/png")
-        else:
-            return Response(content=f"NAI Error {response.status_code}: {response.text}", media_type="text/plain")
-    except Exception as e:
-        return Response(content=f"Error: {str(e)}", media_type="text/plain")
-
-# Это поможет Vercel найти точку входа
-handler = app
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=60)
+            if response.status_code == 200:
+                with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
+                    file_name = zip_file.namelist()[0]
+                    img_data = zip_file.read(file_name)
+                    
+                    self.send_response(200)
+                    self.send_header('Content-type', 'image/png')
+                    self.end_headers()
+                    self.wfile.write(img_data)
+            else:
+                self.send_response(response.status_code)
+                self.end_headers()
+                self.wfile.write(f"NAI Error: {response.text}".encode())
+        except Exception as e:
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(f"Error: {str(e)}".encode())
