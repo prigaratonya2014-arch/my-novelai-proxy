@@ -10,7 +10,7 @@ def generate(prompt: str, token: str, aspect: str = "1:1"):
     sizes = {"1:1": (1024, 1024), "2:3": (832, 1216), "3:2": (1216, 832)}
     w, h = sizes.get(aspect, (1024, 1024))
 
-    url = "https://api.novelai.net/ai/generate-image"
+    url = "https://image.novelai.net/ai/generate-image"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
