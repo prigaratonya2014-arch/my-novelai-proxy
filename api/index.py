@@ -33,15 +33,19 @@ class handler(BaseHTTPRequestHandler):
         
         url = "https://image.novelai.net/ai/generate-image"
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-        payload = {
+       payload = {
             "input": prompt,
             "model": "nai-diffusion-3",
             "action": "generate",
             "parameters": {
-                "width": w, "height": h, "scale": 7,
-                "sampler": "k_euler_ancestral", "steps": 28,
-                "n_samples": 1, 
+                "width": w, "height": h, 
+                "scale": 5, 
+                "sampler": "k_euler_ancestral", 
+                "steps": 28,
+                "n_samples": 1,
                 "uc": "lowres, {bad anatomy}, {disfigured}, {deformed}, {mutated}, text, error, blurry",
+                "sm": True,       # Включает Smea (улучшает структуру)
+                "sm_dyn": True,   # Динамический Smea (делает картинку четче)
                 "params_version": 1
             }
         }
