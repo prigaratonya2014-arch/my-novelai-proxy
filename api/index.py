@@ -42,14 +42,18 @@ class handler(BaseHTTPRequestHandler):
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=60)
             if response.status_code == 200:
-                with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
-                    file_name = zip_file.namelist()[0]
-                    img_data = zip_file.read(file_name)
-                    
-                    self.send_response(200)
-                    self.send_header('Content-type', 'image/png')
-                    self.end_headers()
-                    self.wfile.write(img_data)
+            with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
+                file_name = zip_file.namelist()[0]
+                img_data = zip_file.read(file_name)
+                
+                # ИЗМЕНИ ЗДЕСЬ:
+                return Response(
+                    content=img_data, 
+                    media_type="image/png",
+                    headers={
+                        "Cache-Control": "public, max-age=31536000, immutable"
+                    }
+                )
             else:
                 self.send_response(response.status_code)
                 self.end_headers()
