@@ -46,12 +46,13 @@ class handler(BaseHTTPRequestHandler):
                 file_name = zip_file.namelist()[0]
                 img_data = zip_file.read(file_name)
                 
-                # ИЗМЕНИ ЗДЕСЬ:
                 return Response(
                     content=img_data, 
                     media_type="image/png",
                     headers={
-                        "Cache-Control": "public, max-age=31536000, immutable"
+                        # Браузер хранит год, Vercel хранит на своих серверах 1 месяц
+                        "Cache-Control": "public, s-maxage=2592000, max-age=31536000, immutable",
+                        "Access-Control-Allow-Origin": "*" 
                     }
                 )
             else:
