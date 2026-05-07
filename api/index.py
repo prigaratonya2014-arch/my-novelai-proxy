@@ -1,13 +1,14 @@
 import requests
 import io
 import zipfile
+import hashlib
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # Парсим параметры из ссылки
-        query = parse_qs(urlparse(self.path).query)
+        query_path = urlparse(self.path).query
+        query = parse_qs(query_path)
         prompt = query.get('prompt', [''])[0]
         token = query.get('token', [''])[0]
         aspect = query.get('aspect', ['1:1'])[0]
@@ -16,6 +17,15 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
             self.wfile.write(b"Missing prompt or token")
+            return
+
+        # Создаем уникальный ID для этой конкретной ссылки (ETag)
+        etag = hashlib.md5(query_path.encode()).hexdigest()
+
+        # Проверяем, просит ли браузер подтвердить кэш
+        if self.headers.get('If-None-Match') == etag:
+            self.send_response(304) # Код "304 Not Modified" — МАГИЯ!
+            self.end_headers()
             return
 
         sizes = {"1:1": (1024, 1024), "2:3": (832, 1216), "3:2": (1216, 832)}
@@ -28,13 +38,10 @@ class handler(BaseHTTPRequestHandler):
             "model": "nai-diffusion-3",
             "action": "generate",
             "parameters": {
-                "width": w, "height": h, 
-                "scale": 7, # 7 — идеал для NSFW, не перекручивает анатомию
-                "sampler": "k_euler_ancestral", 
-                "steps": 28,
-                "n_samples": 1,
-                # Убираем nsfw из игнора, оставляем только защиту от кривых рук/ног
-                "uc": "lowres, {bad anatomy}, {disfigured}, {deformed}, {mutated}, {extra inventory}, {extra legs}, {extra arms}, text, error, blurry",
+                "width": w, "height": h, "scale": 7,
+                "sampler": "k_euler_ancestral", "steps": 28,
+                "n_samples": 1, 
+                "uc": "lowres, {bad anatomy}, {disfigured}, {deformed}, {mutated}, text, error, blurry",
                 "params_version": 1
             }
         }
@@ -42,19 +49,17 @@ class handler(BaseHTTPRequestHandler):
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=60)
             if response.status_code == 200:
-            with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
-                file_name = zip_file.namelist()[0]
-                img_data = zip_file.read(file_name)
-                
-                return Response(
-                    content=img_data, 
-                    media_type="image/png",
-                    headers={
-                        # Браузер хранит год, Vercel хранит на своих серверах 1 месяц
-                        "Cache-Control": "public, s-maxage=2592000, max-age=31536000, immutable",
-                        "Access-Control-Allow-Origin": "*" 
-                    }
-                )
+                with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
+                    file_name = zip_file.namelist()[0]
+                    img_data = zip_file.read(file_name)
+                    
+                    self.send_response(200)
+                    self.send_header('Content-type', 'image/png')
+                    # Эти заголовки ЗАПРЕЩАЮТ серверу и браузеру обновлять картинку
+                    self.send_header('ETag', etag)
+                    self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+                    self.end_headers()
+                    self.wfile.write(img_data)
             else:
                 self.send_response(response.status_code)
                 self.end_headers()
