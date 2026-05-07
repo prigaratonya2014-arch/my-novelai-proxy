@@ -19,12 +19,9 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(b"Missing prompt or token")
             return
 
-        # Создаем уникальный ID для этой конкретной ссылки (ETag)
         etag = hashlib.md5(query_path.encode()).hexdigest()
-
-        # Проверяем, просит ли браузер подтвердить кэш
         if self.headers.get('If-None-Match') == etag:
-            self.send_response(304) # Код "304 Not Modified" — МАГИЯ!
+            self.send_response(304)
             self.end_headers()
             return
 
@@ -33,19 +30,17 @@ class handler(BaseHTTPRequestHandler):
         
         url = "https://image.novelai.net/ai/generate-image"
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-       payload = {
+        payload = {
             "input": prompt,
             "model": "nai-diffusion-3",
             "action": "generate",
             "parameters": {
-                "width": w, "height": h, 
-                "scale": 5, 
-                "sampler": "k_euler_ancestral", 
-                "steps": 28,
-                "n_samples": 1,
+                "width": w, "height": h, "scale": 5,
+                "sampler": "k_euler_ancestral", "steps": 28,
+                "n_samples": 1, 
                 "uc": "lowres, {bad anatomy}, {disfigured}, {deformed}, {mutated}, text, error, blurry",
-                "sm": True,       # Включает Smea (улучшает структуру)
-                "sm_dyn": True,   # Динамический Smea (делает картинку четче)
+                "sm": True, 
+                "sm_dyn": True,
                 "params_version": 1
             }
         }
@@ -56,10 +51,8 @@ class handler(BaseHTTPRequestHandler):
                 with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
                     file_name = zip_file.namelist()[0]
                     img_data = zip_file.read(file_name)
-                    
                     self.send_response(200)
                     self.send_header('Content-type', 'image/png')
-                    # Эти заголовки ЗАПРЕЩАЮТ серверу и браузеру обновлять картинку
                     self.send_header('ETag', etag)
                     self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
                     self.end_headers()
