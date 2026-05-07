@@ -28,9 +28,14 @@ class handler(BaseHTTPRequestHandler):
             "model": "nai-diffusion-3",
             "action": "generate",
             "parameters": {
-                "width": w, "height": h, "scale": 7,
-                "sampler": "k_euler_ancestral", "steps": 28,
-                "n_samples": 1, "uc": "lowres, bad quality"
+                "width": w, "height": h, 
+                "scale": 7, # 7 — идеал для NSFW, не перекручивает анатомию
+                "sampler": "k_euler_ancestral", 
+                "steps": 28,
+                "n_samples": 1,
+                # Убираем nsfw из игнора, оставляем только защиту от кривых рук/ног
+                "uc": "lowres, {bad anatomy}, {disfigured}, {deformed}, {mutated}, {extra inventory}, {extra legs}, {extra arms}, text, error, blurry",
+                "params_version": 1
             }
         }
 
