@@ -28,7 +28,7 @@ class handler(BaseHTTPRequestHandler):
             "model": "nai-diffusion-3",
             "action": "generate",
             "parameters": {
-                "width": w, "height": h, "scale": 11,
+                "width": w, "height": h, "scale": 7,
                 "sampler": "k_euler_ancestral", "steps": 28,
                 "n_samples": 1, "uc": "lowres, bad quality"
             }
